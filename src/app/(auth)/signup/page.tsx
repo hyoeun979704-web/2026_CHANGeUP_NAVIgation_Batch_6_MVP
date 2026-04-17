@@ -8,29 +8,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { login } from "@/actions/auth";
-import { loginSchema, type LoginValues } from "@/lib/validations/auth";
+import { signUp } from "@/actions/auth";
+import { signupSchema, type SignupValues } from "@/lib/validations/auth";
 import { useToast } from "@/hooks/use-toast";
 import { PawPrint } from "lucide-react";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const form = useForm<LoginValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+  const form = useForm<SignupValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: { email: "", password: "", confirmPassword: "" },
   });
 
-  function onSubmit(values: LoginValues) {
+  function onSubmit(values: SignupValues) {
     const formData = new FormData();
     formData.set("email", values.email);
     formData.set("password", values.password);
 
     startTransition(async () => {
-      const result = await login(formData);
+      const result = await signUp(formData);
       if (result?.error) {
-        toast({ title: "로그인 실패", description: result.error, variant: "destructive" });
+        toast({ title: "가입 실패", description: result.error, variant: "destructive" });
       }
     });
   }
@@ -43,7 +43,7 @@ export default function LoginPage() {
             <PawPrint className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="text-2xl">PetNoti</CardTitle>
-          <CardDescription>매장 계정으로 로그인하세요</CardDescription>
+          <CardDescription>새 계정을 만들고 매장을 등록하세요</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -68,7 +68,20 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>비밀번호</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" disabled={isPending} {...field} />
+                      <Input type="password" placeholder="6자 이상" disabled={isPending} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>비밀번호 확인</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="비밀번호 재입력" disabled={isPending} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -76,15 +89,15 @@ export default function LoginPage() {
               />
 
               <Button type="submit" className="w-full" disabled={isPending}>
-                {isPending ? "로그인 중..." : "로그인"}
+                {isPending ? "가입 중..." : "가입하기"}
               </Button>
             </form>
           </Form>
 
           <p className="mt-4 text-center text-sm text-muted-foreground">
-            계정이 없으신가요?{" "}
-            <Link href="/signup" className="underline hover:text-foreground">
-              회원가입
+            이미 계정이 있으신가요?{" "}
+            <Link href="/login" className="underline hover:text-foreground">
+              로그인
             </Link>
           </p>
         </CardContent>

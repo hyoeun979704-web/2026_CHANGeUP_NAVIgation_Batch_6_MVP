@@ -1,36 +1,22 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🐾 펫 케어 소상공인 특화 맞춤형 AI CRM 
+> **충남창조경제혁신센터 CHANGeUP NAVIgation Batch 6기 제출용 MVP**
 
-## Getting Started
+## 📌 프로젝트 소개
+**"알림장 작성 시간 80% 단축, 안전한 다중 데이터 관리"**
+펫 미용실/유치원 원장님들의 가장 큰 페인포인트인 '알림장 작성' 및 '고객 소통' 업무를 자동화하는 B2B SaaS입니다. 반려동물의 고유 데이터(알러지, 특이사항 등)를 교차 검증하는 RAG 기반 AI 로직을 통해, 환각 리스크가 통제된 안전하고 전문적인 알림장 초안을 1초 만에 자동 생성합니다.
 
-First, run the development server:
+## 🛠 Tech Stack (1인 풀스택 바이브 코딩)
+- **Frontend:** Next.js (App Router), React, Tailwind CSS, shadcn/ui
+- **Backend & DB:** Supabase (PostgreSQL, Auth, Storage)
+- **AI 연동:** OpenAI API (GPT-4o 기반 RAG 파이프라인)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🚀 MVP 개발 로드맵 및 진척도
+- [x] Next.js 프로젝트 초기 세팅 및 GitHub 형상 관리 환경 구축
+- [ ] Supabase 기반 펫 다중 데이터베이스(보호자/반려견 정보) 스키마 설계
+- [ ] 가맹점(원장님) 전용 대시보드 및 CRM UI 구축
+- [ ] 반려견 특이사항 데이터 연동(RAG) AI 알림장 생성 로직
+- [ ] Human-in-the-Loop 검수 시스템 (최종 발송 전 에디터 수정 화면) 적용
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 💡 Founder's Note
+*"코드가 아닌, 로컬 소상공인의 문제를 풉니다."*
+본 프로젝트는 외부 외주에 의존하지 않고 대표 단독으로 초기 MVP(바이브 코딩)를 구축하고 있습니다. 화려한 아키텍처보다는 천안·아산 지역 펫 케어 현장 원장님들의 실제 피드백을 즉각 반영하는 '린(Lean)하고 자본 효율적인 제품 고도화'에 집중합니다.

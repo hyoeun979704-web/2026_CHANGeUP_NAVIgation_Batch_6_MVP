@@ -45,6 +45,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Guard /onboarding — must be authenticated
+  if (pathname.startsWith("/onboarding") && !user) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
   // Redirect logged-in users away from login/signup
   // Do NOT redirect /onboarding — dashboard layout handles store check to avoid loops
   if ((pathname === "/login" || pathname === "/signup") && user) {

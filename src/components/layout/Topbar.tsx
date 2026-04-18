@@ -10,10 +10,10 @@ export function Topbar({ store }: { store: Store | null }) {
   const [isPending, startTransition] = useTransition();
 
   return (
-    <header className="flex items-center justify-between px-4 py-3 border-b bg-background md:hidden sticky top-0 z-10">
+    <header className="flex items-center justify-between px-4 py-3 border-b bg-sidebar md:hidden sticky top-0 z-10">
       <div className="flex items-center gap-2">
         <PawPrint className="h-5 w-5 text-primary" />
-        <span className="font-semibold text-sm">{store?.name ?? "PetNoti"}</span>
+        <span className="font-semibold text-sm">{store?.name ?? "PUPPY NOTE"}</span>
       </div>
       <Button
         variant="ghost"

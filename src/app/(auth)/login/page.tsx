@@ -36,13 +36,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-2">
             <PawPrint className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl">PetNoti</CardTitle>
+          <CardTitle className="text-2xl">PUPPY NOTE</CardTitle>
           <CardDescription>매장 계정으로 로그인하세요</CardDescription>
         </CardHeader>
         <CardContent>
@@ -66,7 +66,12 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>비밀번호</FormLabel>
+                    <div className="flex items-center justify-between">
+                      <FormLabel>비밀번호</FormLabel>
+                      <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground underline">
+                        비밀번호 재설정
+                      </Link>
+                    </div>
                     <FormControl>
                       <Input type="password" placeholder="••••••••" disabled={isPending} {...field} />
                     </FormControl>

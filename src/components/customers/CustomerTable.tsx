@@ -40,9 +40,17 @@ export function CustomerTable({ customers }: { customers: Customer[] }) {
 
   if (customers.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        <p className="text-sm">등록된 반려동물이 없습니다.</p>
-        <p className="text-sm">새 고객을 등록해 보세요.</p>
+      <div className="border-2 border-dashed rounded-xl p-12 text-center space-y-4">
+        <div className="text-4xl">🐾</div>
+        <div>
+          <p className="font-bold text-base">아직 등록된 고객이 없어요</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            첫 고객을 등록하고 알림장을 자동으로 만들어 보세요.
+          </p>
+        </div>
+        <div className="flex gap-2 justify-center pt-2">
+          <Button asChild><Link href="/customers/new">+ 새 고객 등록</Link></Button>
+        </div>
       </div>
     );
   }
@@ -61,6 +69,17 @@ export function CustomerTable({ customers }: { customers: Customer[] }) {
         </div>
       </div>
 
+      {filtered.length === 0 && search && (
+        <div className="border rounded-xl p-10 text-center space-y-3">
+          <p className="text-sm text-muted-foreground">
+            &ldquo;{search}&rdquo;에 대한 결과가 없습니다.
+          </p>
+          <p className="text-xs text-muted-foreground">이름·견종·보호자 이름으로 검색할 수 있습니다</p>
+          <Button asChild size="sm"><Link href="/customers/new">+ &ldquo;{search}&rdquo;(으)로 새 고객 등록</Link></Button>
+        </div>
+      )}
+
+      {filtered.length > 0 && (
       <Table>
         <TableHeader>
           <TableRow>
@@ -83,10 +102,10 @@ export function CustomerTable({ customers }: { customers: Customer[] }) {
               </TableCell>
               <TableCell>
                 {c.allergies ? (
-                  <Badge variant="destructive" className="gap-1 text-xs">
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-warn border border-warn-ink/30 text-warn-ink font-medium">
                     <AlertTriangle className="h-3 w-3" />
-                    {c.allergies.length > 15 ? c.allergies.slice(0, 15) + "…" : c.allergies}
-                  </Badge>
+                    {c.allergies.length > 14 ? c.allergies.slice(0, 14) + "…" : c.allergies}
+                  </span>
                 ) : (
                   <span className="text-xs text-muted-foreground">없음</span>
                 )}
@@ -118,6 +137,7 @@ export function CustomerTable({ customers }: { customers: Customer[] }) {
           ))}
         </TableBody>
       </Table>
+      )}
 
       <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <DialogContent>

@@ -107,6 +107,36 @@ export default async function DashboardPage() {
         </Button>
       </div>
 
+      {/* first-run empty state */}
+      {used === 0 && (customerCount ?? 0) === 0 && (
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <div>
+              <p className="font-bold text-base mb-1">첫 알림장을 만들어 보세요</p>
+              <p className="text-sm text-muted-foreground">3분이면 원장님의 업무가 완전히 달라집니다.</p>
+            </div>
+            <div className="space-y-2">
+              {[
+                { n: 1, t: "고객 등록", d: "반려동물과 보호자 정보를 입력하세요. 알러지·의료 기록은 AI 프롬프트에 자동 반영됩니다.", href: "/customers/new", cta: "+ 첫 고객 등록" },
+                { n: 2, t: "알림장 생성", d: "키워드 몇 개만 입력하면 AI가 보호자에게 보낼 메시지 초안을 만들어 드려요." },
+                { n: 3, t: "카카오톡 복사", d: "초안을 검수한 뒤 복사 버튼 한 번으로 카톡에 붙여넣기." },
+              ].map((s) => (
+                <div key={s.n} className="flex gap-3 p-3 border rounded-lg">
+                  <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-sm font-semibold shrink-0">{s.n}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm">{s.t}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{s.d}</p>
+                  </div>
+                  {s.href && s.cta && (
+                    <Button size="sm" asChild><Link href={s.href}>{s.cta}</Link></Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {recentNotifications && recentNotifications.length > 0 && (
         <Card>
           <CardHeader>
@@ -114,8 +144,8 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="divide-y p-0">
             {(recentNotifications as NotificationWithCustomer[]).map((n) => (
-              <div key={n.id} className="flex items-center justify-between px-6 py-3">
-                <div>
+              <Link key={n.id} href={`/notifications/${n.id}`} className="flex items-center justify-between px-6 py-3 hover:bg-muted/40 transition-colors">
+                <div className="min-w-0">
                   <p className="text-sm font-medium">{n.customers.pet_name}</p>
                   <p className="text-xs text-muted-foreground truncate max-w-xs">
                     {n.final_text || n.ai_draft || n.keywords}
@@ -126,12 +156,12 @@ export default async function DashboardPage() {
                     {format(new Date(n.created_at), "M/d HH:mm", { locale: ko })}
                   </span>
                   {n.is_sent ? (
-                    <Badge variant="success" className="text-xs">전송</Badge>
+                    <Badge className="text-xs">전송</Badge>
                   ) : (
                     <Badge variant="outline" className="text-xs">대기</Badge>
                   )}
                 </div>
-              </div>
+              </Link>
             ))}
           </CardContent>
         </Card>

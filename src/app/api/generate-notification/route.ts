@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { getGeminiClient, AI_MODEL, AI_MODEL_QUALITY, AI_MAX_TOKENS } from "@/lib/openai";
+import { getGeminiClient, AI_MODEL, AI_MODEL_QUALITY, AI_MAX_TOKENS } from "@/lib/gemini";
 import { retrieveCustomerContext } from "@/lib/rag/retrieve";
 import { sanitize } from "@/lib/prompt/sanitize";
 import { notificationGenerateSchema } from "@/lib/validations/notification";

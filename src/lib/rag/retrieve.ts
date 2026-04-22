@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { sql } from "@/lib/db";
 
 export interface CustomerContext {
   pet_name: string;
@@ -21,34 +21,33 @@ export async function retrieveCustomerContext(
   customerId: string,
   storeId: string
 ): Promise<CustomerContext | null> {
-  const supabase = await createClient();
+  const customers = await sql`
+    SELECT * FROM customers WHERE id = ${customerId} AND store_id = ${storeId}
+  `;
+  const customer = customers[0] as Record<string, unknown> | undefined;
+  if (!customer) return null;
 
-  const { data: customer, error } = await supabase
-    .from("customers")
-    .select("*")
-    .eq("id", customerId)
-    .eq("store_id", storeId)
-    .single();
-
-  if (error || !customer) return null;
-
-  const { data: logs } = await supabase
-    .from("service_logs")
-    .select("service_date, services, notes")
-    .eq("customer_id", customerId)
-    .order("service_date", { ascending: false })
-    .limit(3);
+  const logs = await sql`
+    SELECT service_date, services, notes FROM service_logs
+    WHERE customer_id = ${customerId}
+    ORDER BY service_date DESC
+    LIMIT 3
+  `;
 
   return {
-    pet_name: customer.pet_name,
-    breed: customer.breed,
-    pet_birthday: customer.pet_birthday,
-    pet_weight_kg: customer.pet_weight_kg,
-    neutered: customer.neutered,
-    allergies: customer.allergies,
-    medical_notes: customer.medical_notes,
-    special_notes: customer.special_notes,
-    owner_name: customer.owner_name,
-    recent_logs: logs ?? [],
+    pet_name: customer.pet_name as string,
+    breed: customer.breed as string | null,
+    pet_birthday: customer.pet_birthday as string | null,
+    pet_weight_kg: customer.pet_weight_kg as number | null,
+    neutered: customer.neutered as boolean | null,
+    allergies: customer.allergies as string | null,
+    medical_notes: customer.medical_notes as string | null,
+    special_notes: customer.special_notes as string | null,
+    owner_name: customer.owner_name as string,
+    recent_logs: (logs as Array<{ service_date: string; services: unknown; notes: string | null }>).map((l) => ({
+      service_date: l.service_date,
+      services: Array.isArray(l.services) ? l.services as string[] : JSON.parse(String(l.services)) as string[],
+      notes: l.notes,
+    })),
   };
 }

@@ -1,38 +1,51 @@
 "use client";
 
 import Link from "next/link";
-import { useTransition } from "react";
+import { useState } from "react";
+import { useSignIn } from "@clerk/nextjs/legacy";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { login } from "@/actions/auth";
 import { loginSchema, type LoginValues } from "@/lib/validations/auth";
 import { useToast } from "@/hooks/use-toast";
 import { PawPrint } from "lucide-react";
 
 export default function LoginPage() {
-  const [isPending, startTransition] = useTransition();
+  const { isLoaded, signIn, setActive } = useSignIn();
+  const router = useRouter();
   const { toast } = useToast();
+  const [isPending, setIsPending] = useState(false);
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
 
-  function onSubmit(values: LoginValues) {
-    const formData = new FormData();
-    formData.set("email", values.email);
-    formData.set("password", values.password);
-
-    startTransition(async () => {
-      const result = await login(formData);
-      if (result?.error) {
-        toast({ title: "로그인 실패", description: result.error, variant: "destructive" });
+  async function onSubmit(values: LoginValues) {
+    if (!isLoaded) return;
+    setIsPending(true);
+    try {
+      const result = await signIn.create({
+        identifier: values.email,
+        password: values.password,
+      });
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        router.push("/dashboard");
+      } else {
+        toast({ title: "로그인 실패", description: "이메일 또는 비밀번호를 확인해 주세요", variant: "destructive" });
       }
-    });
+    } catch (err: unknown) {
+      const clerkErr = err as { errors?: Array<{ message: string }> };
+      const msg = clerkErr?.errors?.[0]?.message ?? "로그인에 실패했습니다";
+      toast({ title: "로그인 실패", description: msg, variant: "destructive" });
+    } finally {
+      setIsPending(false);
+    }
   }
 
   return (

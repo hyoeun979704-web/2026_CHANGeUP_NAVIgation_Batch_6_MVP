@@ -1,7 +1,5 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentStore } from "@/actions/stores";
-import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,12 +7,8 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft } from "lucide-react";
 
 export default async function StoreEditPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
   const store = await getCurrentStore();
-  if (!store) redirect("/onboarding");
+  if (!store) return null;
 
   const storeTypeLabels: Record<string, string> = {
     grooming: "미용실",

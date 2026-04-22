@@ -2,34 +2,30 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import { createClient } from "@/lib/supabase/server";
+import { sql } from "@/lib/db";
 import { getCurrentStore } from "@/actions/stores";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { ServiceLogForm } from "@/components/customers/ServiceLogForm";
 import { ChevronLeft, Pencil, Bell, AlertTriangle } from "lucide-react";
+import type { Customer, ServiceLog } from "@/types/database";
 
 export default async function CustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = await createClient();
   const store = await getCurrentStore();
+  if (!store) return null;
 
-  const { data: customer } = await supabase
-    .from("customers")
-    .select("*")
-    .eq("id", id)
-    .eq("store_id", store!.id)
-    .single();
-
+  const customerRows = await sql`
+    SELECT * FROM customers WHERE id = ${id} AND store_id = ${store.id}
+  `;
+  const customer = customerRows[0] as Customer | undefined;
   if (!customer) notFound();
 
-  const { data: logs } = await supabase
-    .from("service_logs")
-    .select("*")
-    .eq("customer_id", id)
-    .order("service_date", { ascending: false });
+  const logRows = await sql`
+    SELECT * FROM service_logs WHERE customer_id = ${id} ORDER BY service_date DESC
+  `;
+  const logs = logRows as ServiceLog[];
 
   return (
     <div className="max-w-3xl space-y-4">
@@ -105,27 +101,30 @@ export default async function CustomerDetailPage({ params }: { params: Promise<{
         </CardContent>
       </Card>
 
-      {logs && logs.length > 0 && (
+      {logs.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">방문 이력</CardTitle>
           </CardHeader>
           <CardContent className="divide-y">
-            {logs.map((log) => (
-              <div key={log.id} className="py-3">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium">
-                    {format(new Date(log.service_date), "yyyy년 M월 d일 (E)", { locale: ko })}
-                  </span>
+            {logs.map((log) => {
+              const services = Array.isArray(log.services) ? log.services : JSON.parse(String(log.services)) as string[];
+              return (
+                <div key={log.id} className="py-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium">
+                      {format(new Date(log.service_date), "yyyy년 M월 d일 (E)", { locale: ko })}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {services.map((s) => (
+                      <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
+                    ))}
+                  </div>
+                  {log.notes && <p className="mt-1 text-xs text-muted-foreground">{log.notes}</p>}
                 </div>
-                <div className="flex flex-wrap gap-1">
-                  {(log.services as string[]).map((s) => (
-                    <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
-                  ))}
-                </div>
-                {log.notes && <p className="mt-1 text-xs text-muted-foreground">{log.notes}</p>}
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
       )}

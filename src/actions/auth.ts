@@ -1,43 +1,16 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-
-export async function login(formData: FormData) {
-  const supabase = await createClient();
-
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  revalidatePath("/", "layout");
-  redirect("/dashboard");
-}
+import { auth } from "@clerk/nextjs/server";
 
 export async function logout() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  // Clerk sign-out is handled client-side via useClerk().signOut()
+  // This action is kept for compatibility but redirects to login
   redirect("/login");
 }
 
-export async function signUp(formData: FormData) {
-  const supabase = await createClient();
-
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-
-  const { error } = await supabase.auth.signUp({ email, password });
-
-  if (error) {
-    return { error: error.message };
-  }
-
-  revalidatePath("/", "layout");
-  redirect("/onboarding");
+export async function requireAuth() {
+  const { userId } = await auth();
+  if (!userId) redirect("/login");
+  return userId;
 }

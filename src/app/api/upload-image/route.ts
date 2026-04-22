@@ -1,49 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { auth } from "@clerk/nextjs/server";
+import { put } from "@vercel/blob";
 import { optimizeImage } from "@/lib/image/optimize";
+import { getCurrentStore } from "@/actions/stores";
 
 export async function POST(request: NextRequest) {
-  const cookieStore = await cookies();
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: () => {},
-      },
-    }
-  );
-
-  // Auth check using anon client
-  const anonSupabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: () => {},
-      },
-    }
-  );
-
-  const { data: { user } } = await anonSupabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const { data: member } = await anonSupabase
-    .from("store_members")
-    .select("store_id")
-    .eq("user_id", user.id)
-    .limit(1)
-    .single();
-
-  if (!member) {
-    return NextResponse.json({ error: "No store found" }, { status: 403 });
-  }
+  const store = await getCurrentStore();
+  if (!store) return NextResponse.json({ error: "No store found" }, { status: 403 });
 
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
@@ -55,19 +21,12 @@ export async function POST(request: NextRequest) {
   const buffer = Buffer.from(await file.arrayBuffer());
   const optimized = await optimizeImage(buffer);
 
-  const fileName = `${member.store_id}/${customerId ?? "general"}/${Date.now()}.webp`;
+  const fileName = `pet-photos/${store.id}/${customerId ?? "general"}/${Date.now()}.webp`;
 
-  const { error: uploadError } = await supabase.storage
-    .from("pet-photos")
-    .upload(fileName, optimized, { contentType: "image/webp", upsert: false });
+  const blob = await put(fileName, optimized, {
+    access: "public",
+    contentType: "image/webp",
+  });
 
-  if (uploadError) {
-    return NextResponse.json({ error: uploadError.message }, { status: 500 });
-  }
-
-  const { data: signedUrlData } = await supabase.storage
-    .from("pet-photos")
-    .createSignedUrl(fileName, 60 * 60 * 24 * 7); // 7 days
-
-  return NextResponse.json({ url: signedUrlData?.signedUrl ?? "", path: fileName });
+  return NextResponse.json({ url: blob.url, path: fileName });
 }

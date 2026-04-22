@@ -1,7 +1,5 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentStore } from "@/actions/stores";
-import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
@@ -14,12 +12,8 @@ const DEMO_TEMPLATES = [
 ];
 
 export default async function TemplatesPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
   const store = await getCurrentStore();
-  if (!store) redirect("/onboarding");
+  if (!store) return null;
 
   return (
     <div className="space-y-5 max-w-xl">

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { auth } from "@clerk/nextjs/server";
+import { sql } from "@/lib/db";
 import { getGeminiClient, AI_MODEL, AI_MODEL_QUALITY, AI_MAX_TOKENS } from "@/lib/gemini";
 import { retrieveCustomerContext } from "@/lib/rag/retrieve";
 import { sanitize } from "@/lib/prompt/sanitize";
 import { notificationGenerateSchema } from "@/lib/validations/notification";
+import { getCurrentStore } from "@/actions/stores";
 
 type StoreType = "grooming" | "daycare" | "kindergarten" | "mixed";
 
@@ -23,47 +24,26 @@ const EVENT_BY_TYPE: Record<StoreType, string> = {
 };
 
 export async function POST(request: NextRequest) {
-  const cookieStore = await cookies();
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: () => {},
-      },
-    }
-  );
+  const store = await getCurrentStore();
+  if (!store) return NextResponse.json({ error: "No store found" }, { status: 403 });
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const { data: member } = await supabase
-    .from("store_members")
-    .select("store_id, stores(monthly_ai_quota, store_type)")
-    .eq("user_id", user.id)
-    .limit(1)
-    .single();
-
-  if (!member) return NextResponse.json({ error: "No store found" }, { status: 403 });
-
-  const rawStores = member.stores;
-  const store = (Array.isArray(rawStores) ? rawStores[0] : rawStores) as { monthly_ai_quota: number; store_type: StoreType } | null;
-  const storeId = member.store_id as string;
-  const storeType: StoreType = (store?.store_type as StoreType) ?? "grooming";
+  const storeId = store.id;
+  const storeType: StoreType = (store.store_type as StoreType) ?? "grooming";
 
   // Monthly quota check
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const { count } = await supabase
-    .from("notifications")
-    .select("*", { count: "exact", head: true })
-    .eq("store_id", storeId)
-    .gte("created_at", monthStart);
+  const countRows = await sql`
+    SELECT COUNT(*) as cnt FROM notifications
+    WHERE store_id = ${storeId} AND created_at >= ${monthStart}
+  `;
+  const count = Number((countRows[0] as { cnt: string }).cnt ?? 0);
+  const quota = store.monthly_ai_quota ?? 20;
 
-  const quota = store?.monthly_ai_quota ?? 20;
-  if ((count ?? 0) >= quota) {
+  if (count >= quota) {
     return NextResponse.json(
       { error: `월 AI 생성 한도(${quota}건)를 초과했습니다` },
       { status: 429 }

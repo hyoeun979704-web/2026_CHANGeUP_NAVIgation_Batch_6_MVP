@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { sql } from "@/lib/db";
 import { getCurrentStore } from "@/actions/stores";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -12,32 +11,49 @@ import { Users, Bell, Clock, Plus, Zap } from "lucide-react";
 import type { NotificationWithCustomer } from "@/types/database";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
   const store = await getCurrentStore();
+  if (!store) return null;
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-  const [
-    { count: customerCount },
-    { count: monthlyCount },
-    { count: sentCount },
-    { data: recentNotifications },
-  ] = await Promise.all([
-    supabase.from("customers").select("*", { count: "exact", head: true }).eq("store_id", store!.id),
-    supabase.from("notifications").select("*", { count: "exact", head: true }).eq("store_id", store!.id).gte("created_at", monthStart),
-    supabase.from("notifications").select("*", { count: "exact", head: true }).eq("store_id", store!.id).eq("is_sent", true).gte("created_at", monthStart),
-    supabase.from("notifications").select("*, customers(pet_name, breed, owner_name, owner_phone)").eq("store_id", store!.id).order("created_at", { ascending: false }).limit(5),
+  const [customerRows, monthlyRows, sentRows, recentRows] = await Promise.all([
+    sql`SELECT COUNT(*) as cnt FROM customers WHERE store_id = ${store.id}`,
+    sql`SELECT COUNT(*) as cnt FROM notifications WHERE store_id = ${store.id} AND created_at >= ${monthStart}`,
+    sql`SELECT COUNT(*) as cnt FROM notifications WHERE store_id = ${store.id} AND is_sent = true AND created_at >= ${monthStart}`,
+    sql`
+      SELECT n.*, c.pet_name, c.breed, c.owner_name, c.owner_phone
+      FROM notifications n
+      JOIN customers c ON c.id = n.customer_id
+      WHERE n.store_id = ${store.id}
+      ORDER BY n.created_at DESC
+      LIMIT 5
+    `,
   ]);
 
-  const quota = store!.monthly_ai_quota;
-  const used = monthlyCount ?? 0;
+  const customerCount = Number((customerRows[0] as { cnt: string }).cnt ?? 0);
+  const used = Number((monthlyRows[0] as { cnt: string }).cnt ?? 0);
+  const sentCount = Number((sentRows[0] as { cnt: string }).cnt ?? 0);
+  const quota = store.monthly_ai_quota;
   const savedMinutes = Math.round((used * 240) / 60);
+
+  const recentNotifications = recentRows.map((r) => {
+    const row = r as Record<string, unknown>;
+    return {
+      ...row,
+      customers: {
+        pet_name: row.pet_name,
+        breed: row.breed,
+        owner_name: row.owner_name,
+        owner_phone: row.owner_phone,
+      },
+    } as unknown as NotificationWithCustomer;
+  });
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold">{store!.name}</h1>
+        <h1 className="text-xl font-semibold">{store.name}</h1>
         <p className="text-sm text-muted-foreground">오늘도 좋은 하루 되세요</p>
       </div>
 
@@ -49,7 +65,7 @@ export default async function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <p className="text-2xl font-bold">{customerCount ?? 0}</p>
+            <p className="text-2xl font-bold">{customerCount}</p>
             <p className="text-xs text-muted-foreground">마리</p>
           </CardContent>
         </Card>
@@ -86,7 +102,7 @@ export default async function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
-            <p className="text-2xl font-bold">{sentCount ?? 0}</p>
+            <p className="text-2xl font-bold">{sentCount}</p>
             <p className="text-xs text-muted-foreground">건 이번 달</p>
           </CardContent>
         </Card>
@@ -107,8 +123,7 @@ export default async function DashboardPage() {
         </Button>
       </div>
 
-      {/* first-run empty state */}
-      {used === 0 && (customerCount ?? 0) === 0 && (
+      {used === 0 && customerCount === 0 && (
         <Card>
           <CardContent className="p-6 space-y-4">
             <div>
@@ -137,13 +152,13 @@ export default async function DashboardPage() {
         </Card>
       )}
 
-      {recentNotifications && recentNotifications.length > 0 && (
+      {recentNotifications.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">최근 알림장</CardTitle>
           </CardHeader>
           <CardContent className="divide-y p-0">
-            {(recentNotifications as NotificationWithCustomer[]).map((n) => (
+            {recentNotifications.map((n) => (
               <Link key={n.id} href={`/notifications/${n.id}`} className="flex items-center justify-between px-6 py-3 hover:bg-muted/40 transition-colors">
                 <div className="min-w-0">
                   <p className="text-sm font-medium">{n.customers.pet_name}</p>

@@ -2,17 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@clerk/nextjs/server";
+import { sql } from "@/lib/db";
 import { customerSchema } from "@/lib/validations/customer";
 import { getCurrentStore } from "./stores";
 
 export async function createCustomer(formData: FormData) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { userId } = await auth();
+  if (!userId) redirect("/login");
 
   const store = await getCurrentStore();
   if (!store) redirect("/onboarding");
@@ -35,33 +32,27 @@ export async function createCustomer(formData: FormData) {
     return { error: parsed.error.issues[0]?.message ?? "입력값을 확인해 주세요" };
   }
 
-  const { error } = await supabase.from("customers").insert({
-    store_id: store.id,
-    owner_name: parsed.data.owner_name,
-    owner_phone: parsed.data.owner_phone,
-    pet_name: parsed.data.pet_name,
-    breed: parsed.data.breed || null,
-    pet_birthday: parsed.data.pet_birthday || null,
-    pet_weight_kg: parsed.data.pet_weight_kg ? Number(parsed.data.pet_weight_kg) : null,
-    neutered: parsed.data.neutered ?? null,
-    allergies: parsed.data.allergies || null,
-    medical_notes: parsed.data.medical_notes || null,
-    special_notes: parsed.data.special_notes || null,
-  });
-
-  if (error) return { error: "고객 등록에 실패했습니다" };
+  const d = parsed.data;
+  await sql`
+    INSERT INTO customers (
+      store_id, owner_name, owner_phone, pet_name, breed,
+      pet_birthday, pet_weight_kg, neutered, allergies, medical_notes, special_notes
+    ) VALUES (
+      ${store.id}, ${d.owner_name}, ${d.owner_phone}, ${d.pet_name},
+      ${d.breed || null}, ${d.pet_birthday || null},
+      ${d.pet_weight_kg ? Number(d.pet_weight_kg) : null},
+      ${d.neutered ?? null}, ${d.allergies || null},
+      ${d.medical_notes || null}, ${d.special_notes || null}
+    )
+  `;
 
   revalidatePath("/customers");
   redirect("/customers");
 }
 
 export async function updateCustomer(id: string, formData: FormData) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { userId } = await auth();
+  if (!userId) redirect("/login");
 
   const store = await getCurrentStore();
   if (!store) redirect("/onboarding");
@@ -84,24 +75,17 @@ export async function updateCustomer(id: string, formData: FormData) {
     return { error: parsed.error.issues[0]?.message ?? "입력값을 확인해 주세요" };
   }
 
-  const { error } = await supabase
-    .from("customers")
-    .update({
-      owner_name: parsed.data.owner_name,
-      owner_phone: parsed.data.owner_phone,
-      pet_name: parsed.data.pet_name,
-      breed: parsed.data.breed || null,
-      pet_birthday: parsed.data.pet_birthday || null,
-      pet_weight_kg: parsed.data.pet_weight_kg ? Number(parsed.data.pet_weight_kg) : null,
-      neutered: parsed.data.neutered ?? null,
-      allergies: parsed.data.allergies || null,
-      medical_notes: parsed.data.medical_notes || null,
-      special_notes: parsed.data.special_notes || null,
-    })
-    .eq("id", id)
-    .eq("store_id", store.id);
-
-  if (error) return { error: "고객 수정에 실패했습니다" };
+  const d = parsed.data;
+  await sql`
+    UPDATE customers SET
+      owner_name = ${d.owner_name}, owner_phone = ${d.owner_phone},
+      pet_name = ${d.pet_name}, breed = ${d.breed || null},
+      pet_birthday = ${d.pet_birthday || null},
+      pet_weight_kg = ${d.pet_weight_kg ? Number(d.pet_weight_kg) : null},
+      neutered = ${d.neutered ?? null}, allergies = ${d.allergies || null},
+      medical_notes = ${d.medical_notes || null}, special_notes = ${d.special_notes || null}
+    WHERE id = ${id} AND store_id = ${store.id}
+  `;
 
   revalidatePath("/customers");
   revalidatePath(`/customers/${id}`);
@@ -109,24 +93,14 @@ export async function updateCustomer(id: string, formData: FormData) {
 }
 
 export async function deleteCustomer(id: string) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { userId } = await auth();
+  if (!userId) redirect("/login");
 
   const store = await getCurrentStore();
   if (!store) redirect("/onboarding");
 
-  const { error } = await supabase
-    .from("customers")
-    .delete()
-    .eq("id", id)
-    .eq("store_id", store.id);
-
-  if (error) return { error: "고객 삭제에 실패했습니다" };
+  await sql`DELETE FROM customers WHERE id = ${id} AND store_id = ${store.id}`;
 
   revalidatePath("/customers");
-  redirect("/customers");
+  return { success: true, error: null };
 }

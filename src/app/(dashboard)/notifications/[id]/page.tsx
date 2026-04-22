@@ -1,6 +1,6 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { sql } from "@/lib/db";
 import { getCurrentStore } from "@/actions/stores";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { CopyButton } from "@/components/notifications/CopyButton";
 import { MarkSentButton } from "@/components/notifications/MarkSentButton";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
+import type { Notification } from "@/types/database";
 
 export default async function NotificationDetailPage({
   params,
@@ -17,29 +18,25 @@ export default async function NotificationDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
   const store = await getCurrentStore();
-  if (!store) redirect("/onboarding");
+  if (!store) return null;
 
-  const { data: notification } = await supabase
-    .from("notifications")
-    .select("*, customers(pet_name, owner_name, owner_phone, allergies)")
-    .eq("id", id)
-    .eq("store_id", store.id)
-    .single();
+  const rows = await sql`
+    SELECT n.*, c.pet_name, c.owner_name, c.owner_phone, c.allergies
+    FROM notifications n
+    JOIN customers c ON c.id = n.customer_id
+    WHERE n.id = ${id} AND n.store_id = ${store.id}
+  `;
+  if (!rows[0]) notFound();
 
-  if (!notification) notFound();
-
-  const customer = notification.customers as {
-    pet_name: string;
-    owner_name: string;
-    owner_phone: string;
-    allergies: string | null;
-  } | null;
+  const row = rows[0] as Record<string, unknown>;
+  const notification = row as unknown as Notification;
+  const customer = {
+    pet_name: row.pet_name as string,
+    owner_name: row.owner_name as string,
+    owner_phone: row.owner_phone as string,
+    allergies: row.allergies as string | null,
+  };
 
   const createdAt = new Date(notification.created_at);
   const displayText = notification.final_text ?? notification.ai_draft ?? "";
@@ -61,9 +58,9 @@ export default async function NotificationDetailPage({
         </Button>
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold">
-            {customer?.pet_name} · {createdAt.toLocaleDateString("ko-KR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+            {customer.pet_name} · {createdAt.toLocaleDateString("ko-KR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}
           </h1>
-          <p className="text-sm text-muted-foreground">{customer?.owner_name} 보호자 · <Badge variant={statusBadge.variant} className="text-xs">{statusBadge.label}</Badge></p>
+          <p className="text-sm text-muted-foreground">{customer.owner_name} 보호자 · <Badge variant={statusBadge.variant} className="text-xs">{statusBadge.label}</Badge></p>
         </div>
         <CopyButton text={displayText} />
         {!notification.is_sent && (
@@ -72,7 +69,6 @@ export default async function NotificationDetailPage({
       </div>
 
       <div className="grid md:grid-cols-[1fr_280px] gap-4">
-        {/* main content */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold">알림장 내용</CardTitle>
@@ -93,7 +89,7 @@ export default async function NotificationDetailPage({
                   {notification.final_text.length}자
                 </span>
               )}
-              {notification.ai_draft && customer?.allergies && (
+              {notification.ai_draft && customer.allergies && (
                 <span className="inline-flex items-center gap-1 text-xs bg-warn border border-warn-ink/30 rounded-full px-2.5 py-1">
                   알러지 반영됨
                 </span>
@@ -102,9 +98,7 @@ export default async function NotificationDetailPage({
           </CardContent>
         </Card>
 
-        {/* sidebar */}
         <div className="space-y-3">
-          {/* photo placeholder */}
           {notification.image_url && (
             <Card>
               <CardHeader className="pb-2">
@@ -117,7 +111,6 @@ export default async function NotificationDetailPage({
             </Card>
           )}
 
-          {/* keywords */}
           {keywords.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
@@ -133,7 +126,6 @@ export default async function NotificationDetailPage({
             </Card>
           )}
 
-          {/* timeline */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold">전송 이력</CardTitle>

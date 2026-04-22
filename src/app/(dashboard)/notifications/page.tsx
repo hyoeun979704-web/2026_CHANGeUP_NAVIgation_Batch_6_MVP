@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { sql } from "@/lib/db";
 import { getCurrentStore } from "@/actions/stores";
 import { NotificationHistory } from "@/components/notifications/NotificationHistory";
 import { Button } from "@/components/ui/button";
@@ -8,16 +8,30 @@ import { Plus } from "lucide-react";
 import type { NotificationWithCustomer } from "@/types/database";
 
 export default async function NotificationsPage() {
-  const supabase = await createClient();
   const store = await getCurrentStore();
+  if (!store) return null;
 
-  const { data: notifications } = await supabase
-    .from("notifications")
-    .select("*, customers(pet_name, breed, owner_name, owner_phone)")
-    .eq("store_id", store!.id)
-    .order("created_at", { ascending: false });
+  const rows = await sql`
+    SELECT n.*, c.pet_name, c.breed, c.owner_name, c.owner_phone
+    FROM notifications n
+    JOIN customers c ON c.id = n.customer_id
+    WHERE n.store_id = ${store.id}
+    ORDER BY n.created_at DESC
+  `;
 
-  const all = (notifications ?? []) as NotificationWithCustomer[];
+  const all = rows.map((r) => {
+    const row = r as Record<string, unknown>;
+    return {
+      ...row,
+      customers: {
+        pet_name: row.pet_name,
+        breed: row.breed,
+        owner_name: row.owner_name,
+        owner_phone: row.owner_phone,
+      },
+    } as unknown as NotificationWithCustomer;
+  });
+
   const sent = all.filter((n) => n.is_sent);
   const pending = all.filter((n) => !n.is_sent);
 

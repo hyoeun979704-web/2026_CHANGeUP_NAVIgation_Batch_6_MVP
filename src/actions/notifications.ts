@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@clerk/nextjs/server";
+import { sql } from "@/lib/db";
 import { getCurrentStore } from "./stores";
 
 export async function saveNotification({
@@ -22,64 +23,47 @@ export async function saveNotification({
   tokensUsed?: number;
   latencyMs?: number;
 }) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { userId } = await auth();
+  if (!userId) redirect("/login");
 
   const store = await getCurrentStore();
   if (!store) redirect("/onboarding");
 
   const editDistance = computeEditDistance(aiDraft, finalText);
 
-  const { data, error } = await supabase
-    .from("notifications")
-    .insert({
-      store_id: store.id,
-      customer_id: customerId,
-      keywords,
-      image_url: imageUrl || null,
-      ai_draft: aiDraft,
-      final_text: finalText,
-      tokens_used: tokensUsed ?? null,
-      latency_ms: latencyMs ?? null,
-      draft_accepted_as_is: editDistance === 0,
-      edit_distance: editDistance,
-      estimated_seconds_saved: 240,
-      is_sent: false,
-    })
-    .select()
-    .single();
+  const rows = await sql`
+    INSERT INTO notifications (
+      store_id, customer_id, keywords, image_url, ai_draft, final_text,
+      tokens_used, latency_ms, draft_accepted_as_is, edit_distance,
+      estimated_seconds_saved, is_sent
+    ) VALUES (
+      ${store.id}, ${customerId}, ${keywords}, ${imageUrl || null},
+      ${aiDraft}, ${finalText}, ${tokensUsed ?? null}, ${latencyMs ?? null},
+      ${editDistance === 0}, ${editDistance}, 240, false
+    )
+    RETURNING id
+  `;
 
-  if (error) return { error: "알림장 저장에 실패했습니다" };
+  if (!rows[0]) return { error: "알림장 저장에 실패했습니다" };
 
   revalidatePath("/notifications");
-  return { id: data.id };
+  return { id: (rows[0] as { id: string }).id };
 }
 
 export async function markNotificationSent(id: string) {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const { userId } = await auth();
+  if (!userId) redirect("/login");
 
   const store = await getCurrentStore();
   if (!store) redirect("/onboarding");
 
-  const { error } = await supabase
-    .from("notifications")
-    .update({ is_sent: true, sent_at: new Date().toISOString() })
-    .eq("id", id)
-    .eq("store_id", store.id);
-
-  if (error) return { error: "전송 표시에 실패했습니다" };
+  await sql`
+    UPDATE notifications SET is_sent = true, sent_at = NOW()
+    WHERE id = ${id} AND store_id = ${store.id}
+  `;
 
   revalidatePath("/notifications");
-  return { success: true };
+  return { success: true, error: null };
 }
 
 function computeEditDistance(a: string, b: string): number {

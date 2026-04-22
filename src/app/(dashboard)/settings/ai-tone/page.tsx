@@ -1,7 +1,5 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentStore } from "@/actions/stores";
-import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,12 +7,8 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft } from "lucide-react";
 
 export default async function AITonePage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
   const store = await getCurrentStore();
-  if (!store) redirect("/onboarding");
+  if (!store) return null;
 
   const sliders = [
     { label: "친근함", left: "정중함", right: "친근함", value: 70 },
@@ -79,7 +73,6 @@ export default async function AITonePage() {
         </CardContent>
       </Card>
 
-      {/* preview */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold">미리보기</CardTitle>

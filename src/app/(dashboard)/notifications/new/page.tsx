@@ -1,9 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { sql } from "@/lib/db";
 import { getCurrentStore } from "@/actions/stores";
 import { NotificationForm } from "@/components/notifications/NotificationForm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
+import type { Customer } from "@/types/database";
 
 export default async function NewNotificationPage({
   searchParams,
@@ -11,14 +12,13 @@ export default async function NewNotificationPage({
   searchParams: Promise<{ customerId?: string }>;
 }) {
   const { customerId } = await searchParams;
-  const supabase = await createClient();
   const store = await getCurrentStore();
+  if (!store) return null;
 
-  const { data: customers } = await supabase
-    .from("customers")
-    .select("*")
-    .eq("store_id", store!.id)
-    .order("pet_name");
+  const rows = await sql`
+    SELECT * FROM customers WHERE store_id = ${store.id} ORDER BY pet_name
+  `;
+  const customers = rows as Customer[];
 
   return (
     <div className="space-y-4">
@@ -28,7 +28,7 @@ export default async function NewNotificationPage({
         </Button>
         <h1 className="text-xl font-semibold">AI 알림장 생성</h1>
       </div>
-      <NotificationForm customers={customers ?? []} defaultCustomerId={customerId} />
+      <NotificationForm customers={customers} defaultCustomerId={customerId} />
     </div>
   );
 }

@@ -4,16 +4,7 @@ import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Search } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import type { Customer } from "@/types/database";
-
-interface SearchResult {
-  type: "customer" | "notification";
-  id: string;
-  title: string;
-  sub: string;
-  href: string;
-}
+import { searchGlobal, type SearchResult } from "@/actions/search";
 
 export function GlobalSearch() {
   const [open, setOpen] = useState(false);
@@ -22,7 +13,6 @@ export function GlobalSearch() {
   const [, startTransition] = useTransition();
   const router = useRouter();
 
-  // ⌘K / Ctrl+K
   useEffect(() => {
     function handler(e: KeyboardEvent) {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -37,32 +27,7 @@ export function GlobalSearch() {
   useEffect(() => {
     if (!query.trim()) { setResults([]); return; }
     startTransition(async () => {
-      const supabase = createClient();
-      const q = query.trim();
-
-      const [{ data: customers }, { data: notifications }] = await Promise.all([
-        supabase
-          .from("customers")
-          .select("id, pet_name, breed, owner_name")
-          .or(`pet_name.ilike.%${q}%,owner_name.ilike.%${q}%,breed.ilike.%${q}%`)
-          .limit(5),
-        supabase
-          .from("notifications")
-          .select("id, keywords, final_text, ai_draft, created_at, customers(pet_name)")
-          .or(`keywords.ilike.%${q}%,final_text.ilike.%${q}%`)
-          .limit(4),
-      ]);
-
-      const r: SearchResult[] = [];
-      for (const c of (customers ?? []) as Pick<Customer, "id" | "pet_name" | "breed" | "owner_name">[]) {
-        r.push({ type: "customer", id: c.id, title: c.pet_name, sub: `${c.breed ?? ""} · ${c.owner_name} 보호자`, href: `/customers/${c.id}` });
-      }
-      type NotiRow = { id: string; keywords: string; final_text: string | null; ai_draft: string | null; created_at: string; customers: { pet_name: string } | { pet_name: string }[] | null };
-      for (const n of (notifications ?? []) as unknown as NotiRow[]) {
-        const customerPetName = Array.isArray(n.customers) ? n.customers[0]?.pet_name : n.customers?.pet_name;
-        const preview = (n.final_text ?? n.ai_draft ?? n.keywords).slice(0, 50);
-        r.push({ type: "notification", id: n.id, title: customerPetName ?? "알림장", sub: preview, href: `/notifications/${n.id}` });
-      }
+      const r = await searchGlobal(query.trim());
       setResults(r);
     });
   }, [query]);

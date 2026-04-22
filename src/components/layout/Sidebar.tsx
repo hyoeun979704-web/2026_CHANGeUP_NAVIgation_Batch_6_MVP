@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Bell, Settings } from "lucide-react";
+import { LayoutDashboard, Users, Bell, Settings, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/dashboard", icon: LayoutDashboard, label: "대시보드" },
   { href: "/customers", icon: Users, label: "반려동물 / 고객" },
+  { href: "/reservations", icon: CalendarDays, label: "예약 관리" },
   { href: "/notifications", icon: Bell, label: "알림장 관리" },
   { href: "/settings", icon: Settings, label: "설정" },
 ];

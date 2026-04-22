@@ -82,3 +82,34 @@ create table if not exists notifications (
 );
 
 create index if not exists notifications_store_id_idx on notifications(store_id, created_at desc);
+
+-- 6) 예약
+alter table stores add column if not exists slug text unique;
+create unique index if not exists stores_slug_idx on stores(slug);
+
+create table if not exists reservations (
+  id              uuid primary key default uuid_generate_v4(),
+  store_id        uuid not null references stores(id) on delete cascade,
+  customer_id     uuid references customers(id) on delete set null,
+  scheduled_at    timestamptz not null,
+  duration_min    int not null default 60,
+  services        jsonb not null default '[]',
+  status          text not null default 'pending'
+    check (status in ('pending','confirmed','completed','no_show','cancelled')),
+  deposit_amount  numeric(10,0),
+  deposit_paid_at timestamptz,
+  notes           text,
+  guest_name      text,
+  guest_phone     text,
+  created_at      timestamptz not null default now()
+);
+
+create index if not exists reservations_store_scheduled_idx
+  on reservations(store_id, scheduled_at);
+create index if not exists reservations_customer_idx
+  on reservations(customer_id);
+
+-- 동시 예약 방지: 취소/노쇼 제외 슬롯 유니크
+create unique index if not exists reservations_slot_unique_idx
+  on reservations(store_id, scheduled_at)
+  where status not in ('cancelled', 'no_show');

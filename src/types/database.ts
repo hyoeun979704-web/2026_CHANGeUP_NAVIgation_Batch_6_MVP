@@ -13,6 +13,7 @@ export interface Database {
           plan: "free" | "starter" | "pro" | "pro_pg";
           monthly_ai_quota: number;
           toss_customer_key: string | null;
+          slug: string | null;
           created_at: string;
         };
         Insert: {
@@ -24,6 +25,7 @@ export interface Database {
           plan?: "free" | "starter" | "pro" | "pro_pg";
           monthly_ai_quota?: number;
           toss_customer_key?: string | null;
+          slug?: string | null;
           created_at?: string;
         };
         Update: {
@@ -35,6 +37,7 @@ export interface Database {
           plan?: "free" | "starter" | "pro" | "pro_pg";
           monthly_ai_quota?: number;
           toss_customer_key?: string | null;
+          slug?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -236,7 +239,7 @@ export interface Database {
         Row: {
           id: string;
           store_id: string;
-          customer_id: string;
+          customer_id: string | null;
           scheduled_at: string;
           duration_min: number;
           services: string[];
@@ -244,12 +247,14 @@ export interface Database {
           deposit_amount: number | null;
           deposit_paid_at: string | null;
           notes: string | null;
+          guest_name: string | null;
+          guest_phone: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           store_id: string;
-          customer_id: string;
+          customer_id?: string | null;
           scheduled_at: string;
           duration_min?: number;
           services?: string[];
@@ -257,12 +262,14 @@ export interface Database {
           deposit_amount?: number | null;
           deposit_paid_at?: string | null;
           notes?: string | null;
+          guest_name?: string | null;
+          guest_phone?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
           store_id?: string;
-          customer_id?: string;
+          customer_id?: string | null;
           scheduled_at?: string;
           duration_min?: number;
           services?: string[];
@@ -270,6 +277,8 @@ export interface Database {
           deposit_amount?: number | null;
           deposit_paid_at?: string | null;
           notes?: string | null;
+          guest_name?: string | null;
+          guest_phone?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -334,4 +343,8 @@ export type Payment = Database["public"]["Tables"]["payments"]["Row"];
 
 export type NotificationWithCustomer = Notification & {
   customers: Pick<Customer, "pet_name" | "breed" | "owner_name" | "owner_phone">;
+};
+
+export type ReservationWithCustomer = Reservation & {
+  customers: Pick<Customer, "pet_name" | "owner_name" | "owner_phone"> | null;
 };

@@ -55,15 +55,31 @@ export async function updateStore(formData: FormData) {
 
   const name = formData.get("name") as string;
   const phone = formData.get("phone") as string;
+  const slugRaw = formData.get("slug") as string | null;
 
   if (!name?.trim()) return { error: "매장 이름을 입력해 주세요" };
 
-  await sql`
-    UPDATE stores SET name = ${name.trim()}, phone = ${phone?.trim() || null}
-    WHERE id = ${store.id}
-  `;
+  const slug = slugRaw?.trim()
+    ? slugRaw.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").slice(0, 40)
+    : null;
+
+  try {
+    await sql`
+      UPDATE stores
+      SET name = ${name.trim()}, phone = ${phone?.trim() || null},
+          slug = ${slug}
+      WHERE id = ${store.id}
+    `;
+  } catch (err: unknown) {
+    const pgErr = err as { code?: string };
+    if (pgErr?.code === "23505") {
+      return { error: "이미 사용 중인 예약 링크 주소입니다" };
+    }
+    throw err;
+  }
 
   revalidatePath("/settings/store");
   revalidatePath("/settings");
+  revalidatePath("/reservations");
   return { success: true };
 }
